@@ -5,8 +5,8 @@
 
       <div style="display: flex; align-items: baseline; gap: 20px; flex-wrap: wrap">
         <div style="font-family: var(--font-heading); font-weight: 800; font-size: 17px; letter-spacing: 0.02em">LIPSS · B2B EXPORT</div>
-        <div style="font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-neutral-600)">Продажі на експорт · оновлення 3× на день</div>
-        <div style="margin-left: auto; font-size: 11px; color: var(--color-neutral-600)">{{ stamp }}{{ buildNote }}</div>
+        <div style="font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-neutral-600)">Продажі на експорт · оновлюється кожні 10 хвилин</div>
+        <a href="https://docs.google.com/spreadsheets/d/1stQdG9pW78Kj69K0ctuEa6kDpa7D4yl9nXYX2Oe6tbI/edit" target="_blank" rel="noopener" style="margin-left: auto; font-size: 11px; color: var(--color-neutral-600); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--color-neutral-400)">{{ stamp }}{{ buildNote }}</a>
       </div>
 
       <div style="display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start">
@@ -502,7 +502,9 @@
         </div>
       </div>
 
-      <div style="margin-top: 40px; border-top: 1px solid var(--color-divider); padding-top: 12px; font-size: 12px; color: var(--color-neutral-600)">{{ disc.tail }}</div>
+      <sc-if value="{{ disc.hasTail }}" hint-placeholder-val="{{ true }}">
+        <div style="margin-top: 40px; border-top: 1px solid var(--color-divider); padding-top: 12px; font-size: 12px; color: var(--color-neutral-600)">{{ disc.tail }}</div>
+      </sc-if>
     </section>
   </div>
 </div>

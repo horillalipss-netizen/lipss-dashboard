@@ -496,6 +496,13 @@ class Component extends DCLogic {
       color: r.v <= 1.5 ? this.GREEN : (r.v <= 3 ? this.AMBER : 'var(--color-accent)')
     }));
     const noResp = C.base.filter(r => r.respN === 0 && r.leads > 0).map(r => r.c);
+    // Показуємо лише те, що справді треба чистити; коли все чисто — рядка немає.
+    const tailBits = [];
+    if (agg.dup) tailBits.push('дублів не розібрано — ' + this.fmt(agg.dup));
+    if (agg.noCard) tailBits.push('оплат без картки ліда — ' + this.fmt(agg.noCard) + ' (у них немає email, типу і джерела, тому в розрізах вони випадають)');
+    if (agg.noSum) tailBits.push('оплат зі статусом «5 · Оплата», але без суми — ' + this.fmt(agg.noSum));
+    const tailText = (this.props.showCleanupTail === false || !tailBits.length) ? '' : 'Хвіст чистки: ' + tailBits.join(' · ') + '.';
+
     const disc = {
       need: this.fmt(agg.need), red: this.fmt(agg.red),
       note: agg.leads
@@ -505,7 +512,7 @@ class Component extends DCLogic {
       respNote: noResp.length
         ? 'Дат першого листа немає у ' + noResp.length + ' ' + this.plural(noResp.length, 'країни', 'країнах', 'країнах') + ' (' + noResp.join(', ') + ') — колонка J там не заповнювалась, тож у рейтинг вони не входять.'
         : 'Дати першого листа заповнені по всіх країнах зрізу.',
-      tail: this.props.showCleanupTail === false ? '' : 'Хвіст чистки: дублів не розібрано — ' + this.fmt(agg.dup) + ' · оплат без картки ліда — ' + this.fmt(agg.noCard) + ' (у них немає email, типу і джерела, тому в розрізах вони випадають) · оплат зі статусом «5 · Оплата», але без суми в таблиці — ' + this.fmt(agg.noSum) + '.'
+      tail: tailText, hasTail: !!tailText
     };
 
     // ── фільтри ──
