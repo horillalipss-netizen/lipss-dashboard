@@ -1,0 +1,596 @@
+<script type="text/x-dc" data-dc-script data-props="{&quot;stamp&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;defaultPeriod&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;7&quot;,&quot;30&quot;,&quot;all&quot;],&quot;default&quot;:&quot;all&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;showConclusions&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Читабельність&quot;},&quot;showCleanupTail&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Читабельність&quot;}}">
+class Component extends DCLogic {
+  state = { sel: [], period: null, source: 'all', type: 'all', sortKey: 'sum', sortDir: -1, hover: null, donut: 'all' };
+
+  // ── Джерело: Google Sheets «LIPSS_B2B_воронка», 14 листів країн, рядки 9–508.
+  //    Знімок: 31.07.2026. 2 287 лідів · 11 411,21 € · 31 перше замовлення · 2 повторних.
+  //    Кожен рядок нижче — один лід. Формат полів (порожнє = немає значення):
+  //    країна, джерело, тип бізнесу, етап №, день запиту, день оплати, сума оплати,
+  //    день повторного, сума повторного, днів до 1-го листа, код дії, причина зупинки, дубль.
+  //    Дні — зсув від 01.06.2026. Сьогодні = 60 (31.07.2026).
+  ORDER = ['Польща','Чехія','Словаччина','Угорщина','Болгарія','Румунія','Німеччина','Австрія','Нідерланди','Бельгія','Італія','Іспанія','Португалія','Франція'];
+  MGR = { 'Польща': 'Катерина', 'Чехія': 'Катерина', 'Словаччина': 'Катерина', 'Угорщина': 'Катерина', 'Болгарія': 'Катерина', 'Румунія': 'Катерина', 'Німеччина': 'Саша О.', 'Австрія': 'Саша О.', 'Нідерланди': 'Саша Я.', 'Бельгія': 'Саша Я.', 'Італія': 'Саша Я.', 'Іспанія': 'Яна', 'Португалія': 'Яна', 'Франція': 'Яна' };
+  SRC = window.__LIPSS.src;
+  TYP = window.__LIPSS.typ;
+  RSN = ['інша причина','не наш профіль','хоче тільки тестери','не зацікавлений'];
+  MG = ['Катерина', 'Саша О.', 'Саша Я.', 'Яна'];
+  SI = { 1: 0, 2: 1, 3: 2, 5: 3 };
+  STAGES = [
+    { n: 'Запит', d: 'заявка є, до цільового ще не дійшли', col: 'var(--color-neutral-400)' },
+    { n: 'Цільовий', d: 'наша аудиторія, але мовчить', col: 'var(--color-neutral-700)' },
+    { n: 'Діалог', d: 'відповіли, спілкуємось', col: 'var(--color-accent-400)' },
+    { n: 'Оплата', d: 'заплатили', col: 'var(--color-accent)' }
+  ];
+  RLABEL = ['не відповідає: мовчить 14+ днів','мовчить тиждень','не наш профіль','інша причина','не зацікавлений / тільки тестери','у роботі, стоп-причини немає'];
+  CFG = window.__LIPSS;
+  BUILD = window.__LIPSS.build;
+  TODAY = window.__LIPSS.today;
+  NW = window.__LIPSS.nw;
+
+  DATA = window.__LIPSS.data;
+
+  GREEN = '#2c7a4b';
+  AMBER = '#a8760a';
+
+  fmt(n) { return Math.round(n).toLocaleString('uk-UA').replace(/\u00a0/g, '\u2009'); }
+  eur(n) { return this.fmt(n) + ' €'; }
+  pc(x, d) { return (x || 0).toFixed(d === undefined ? 1 : d).replace('.', ',') + '%'; }
+  dec(x, d) { return (x || 0).toFixed(d === undefined ? 1 : d).replace('.', ','); }
+  plural(n, a, b, c) { const m = Math.round(n) % 100, u = m % 10; if (m > 10 && m < 20) return c; if (u === 1) return a; if (u > 1 && u < 5) return b; return c; }
+  oneIn(pays, leads) { return !leads ? '—' : (!pays ? 'жодної' : '1 із ' + this.fmt(leads / pays)); }
+
+  get period() { return this.state.period || this.props.defaultPeriod || 'all'; }
+
+  leads() {
+    if (this._L) return this._L;
+    const n = v => v === '' ? null : +v;
+    this._L = this.DATA.split(';').map(s => {
+      const p = s.split(',');
+      return { c: +p[0], s: n(p[1]), t: n(p[2]), st: +p[3], a: n(p[4]), pd: n(p[5]), pm: +p[6] || 0, rd: n(p[7]), rm: +p[8] || 0, rs: n(p[9]), ac: n(p[10]), rn: n(p[11]), dp: p[12] === '1' };
+    });
+    return this._L;
+  }
+
+  win() {
+    const p = this.period;
+    if (p === '7') return [this.TODAY - 6, this.TODAY];
+    if (p === '30') return [this.TODAY - 29, this.TODAY];
+    return [-9999, 9999];
+  }
+
+  // Зріз «джерело + тип». Країна і період застосовуються окремо.
+  passST(r) {
+    const s = this.state;
+    if (s.source !== 'all' && this.SRC[r.s] !== s.source) return false;
+    if (s.type !== 'all' && this.TYP[r.t] !== s.type) return false;
+    return true;
+  }
+
+  blank(c) {
+    return {
+      c: c, m: this.MGR[c], leads: 0, targ: 0, dial: 0, pays: 0, sum: 0, first: 0,
+      sum7: 0, leads7: 0, rep: 0, resp: 0, respN: 0, need: 0, red: 0, dup: 0, noCard: 0, noSum: 0,
+      rz: [0, 0, 0, 0, 0, 0], stg: [0, 0, 0, 0], wk: new Array(this.NW).fill(0)
+    };
+  }
+
+  computed() {
+    const key = [this.state.sel.join('|'), this.period, this.state.source, this.state.type].join('#');
+    if (this._C && this._C.key === key) return this._C;
+
+    const w = this.win(), all = this.period === 'all';
+    const per = this.ORDER.map(c => this.blank(c));
+    const src = this.SRC.map(n => ({ name: n, leads: 0, pays: 0, sum: 0, first: 0 }));
+    const typ = this.TYP.map(n => ({ name: n, leads: 0, pays: 0, sum: 0, first: 0 }));
+    const sel = this.state.sel;
+    const inSel = c => !sel.length || sel.indexOf(c) >= 0;
+    const bucket = d => { const k = this.NW - 1 - Math.floor((this.TODAY - d) / 7); return k >= 0 && k < this.NW ? k : -1; };
+
+    this.leads().forEach(r => {
+      if (!this.passST(r)) return;
+      const P = per[r.c];
+      const inLead = all || (r.a !== null && r.a >= w[0] && r.a <= w[1]);
+      const payIn = r.pd !== null && r.pd >= w[0] && r.pd <= w[1];
+      const repIn = r.rd !== null && r.rd >= w[0] && r.rd <= w[1];
+
+      if (inLead) {
+        P.leads++;
+        if (r.st >= 2) P.targ++;
+        if (r.st >= 3) P.dial++;
+        if (r.st === 5) P.pays++;
+        const si = this.SI[r.st]; if (si !== undefined) P.stg[si]++;
+        if (r.rs !== null) { P.resp += r.rs; P.respN++; }
+        if (r.ac !== 2) P.need++;
+        if (r.ac === 0) P.red++;
+        if (r.dp) P.dup++;
+        if (r.ac === 3) P.noCard++;
+        if (r.st === 5 && !r.pm && !r.rm) P.noSum++;
+        if (r.st !== 5) {
+          const b = r.rn === 1 ? 2 : (r.rn === 0 ? 3 : (r.rn === 2 ? 4 : (r.ac === 0 ? 0 : (r.ac === 1 ? 1 : 5))));
+          P.rz[b]++;
+        }
+      }
+      if (payIn) { P.sum += r.pm; P.first += r.pm; }
+      if (repIn) { P.sum += r.rm; P.rep++; }
+      if (r.pd !== null && r.pd >= this.TODAY - 6) P.sum7 += r.pm;
+      if (r.rd !== null && r.rd >= this.TODAY - 6) P.sum7 += r.rm;
+      if (r.a !== null && r.a >= this.TODAY - 6) P.leads7++;
+      if (r.pd !== null) { const k = bucket(r.pd); if (k >= 0) P.wk[k] += r.pm; }
+      if (r.rd !== null) { const k = bucket(r.rd); if (k >= 0) P.wk[k] += r.rm; }
+
+      // розрізи по джерелах / типах — рахуються лише в межах вибраних країн
+      if (inSel(this.ORDER[r.c])) {
+        const S = src[r.s], T = typ[r.t];
+        if (inLead) { if (S) S.leads++; if (T) T.leads++; if (r.st === 5) { if (S) S.pays++; if (T) T.pays++; } }
+        if (payIn) { if (S) { S.sum += r.pm; S.first += r.pm; } if (T) { T.sum += r.pm; T.first += r.pm; } }
+        if (repIn) { if (S) S.sum += r.rm; if (T) T.sum += r.rm; }
+      }
+    });
+
+    const base = per.filter(p => inSel(p.c));
+    const agg = base.reduce((a, p) => {
+      a.leads += p.leads; a.targ += p.targ; a.dial += p.dial; a.pays += p.pays;
+      a.sum += p.sum; a.first += p.first; a.sum7 += p.sum7; a.leads7 += p.leads7; a.rep += p.rep;
+      a.need += p.need; a.red += p.red; a.dup += p.dup; a.noCard += p.noCard; a.noSum += p.noSum;
+      p.rz.forEach((v, i) => a.rz[i] += v);
+      p.stg.forEach((v, i) => a.stg[i] += v);
+      p.wk.forEach((v, i) => a.wk[i] += v);
+      return a;
+    }, { leads: 0, targ: 0, dial: 0, pays: 0, sum: 0, first: 0, sum7: 0, leads7: 0, rep: 0, need: 0, red: 0, dup: 0, noCard: 0, noSum: 0, rz: [0, 0, 0, 0, 0, 0], stg: [0, 0, 0, 0], wk: new Array(this.NW).fill(0) });
+
+    this._C = { key: key, per: per, base: base, agg: agg, src: src, typ: typ };
+    return this._C;
+  }
+
+  setSort(k) { this.setState(s => ({ sortKey: k, sortDir: s.sortKey === k ? -s.sortDir : -1 })); }
+
+  renderVals() {
+    const C = this.computed();
+    const agg = C.agg;
+    const period = this.period;
+    const perLabel = { '7': '7 днів', '30': '30 днів', 'all': 'весь час' }[period];
+
+    // ── графік по тижнях ──
+    // Геометрія лишається в SVG (сітка, лінія, смуга періоду, зона наведення),
+    // усі підписи малюються HTML-шаром поверх — див. коментар у розмітці.
+    const vals = agg.wk;
+    const max = Math.max.apply(null, vals.concat([1]));
+    const niceMax = (() => { const p = Math.pow(10, Math.floor(Math.log10(max || 1))); return Math.ceil(max / (p / 2)) * (p / 2) || 1; })();
+    const step = 960 / (this.NW - 1);
+    const x = i => 20 + i * step;
+    const y = v => 30 + (1 - v / niceMax) * 190;
+    const pct = px => (px / 10).toFixed(2) + '%';
+    const hov = this.state.hover;
+    const last = this.NW - 1;
+    // Дата кінця i-го тижня: TODAY − 7·(last − i) днів від 01.06.2026.
+    const D0 = this.CFG.day0;
+    const dayFmt = d => { const t = new Date(D0[0], D0[1] - 1, D0[2] + d); return ('0' + t.getDate()).slice(-2) + '.' + ('0' + (t.getMonth() + 1)).slice(-2); };
+    const weekEnd = i => this.TODAY - 7 * (last - i);
+    const pts = vals.map((v, i) => {
+      const isLast = i === last, on = hov === i;
+      return {
+        x: x(i), y: y(v),
+        left: pct(x(i)), top: y(v).toFixed(1) + 'px',
+        size: (on ? 13 : (isLast ? 11 : 7)) + 'px',
+        fill: on || isLast ? 'var(--color-accent)' : 'var(--color-text)',
+        wk1: dayFmt(weekEnd(i)),
+        wk2: isLast ? 'цей тиждень' : '',
+        wkColor: on || isLast ? 'var(--color-accent)' : 'var(--color-neutral-700)',
+        wkWeight: on || isLast ? '600' : '400',
+        hx: x(i) - step / 2, hw: step,
+        enter: () => this.setState({ hover: i }),
+        leave: () => this.setState({ hover: null })
+      };
+    });
+    const labels = hov !== null ? [] : vals.map((v, i) => ({ v: v, i: i }))
+      .filter(o => o.v > 0 && (o.i === last || o.i === 0 || o.i === Math.floor(last / 2)))
+      .map(o => ({
+        left: pts[o.i].left, top: (y(o.v) - 11).toFixed(1) + 'px', text: this.eur(o.v),
+        shift: o.i === 0 ? '0' : (o.i === last ? '-100%' : '-50%'),
+        color: o.i === last ? 'var(--color-accent)' : 'var(--color-neutral-700)'
+      }));
+    const ticks = [0, 0.5, 1].map(fr => {
+      const v = niceMax * fr;
+      return { y: y(v).toFixed(1), top: y(v).toFixed(1) + 'px', label: fr === 0 ? '0' : this.eur(v) };
+    });
+    const tip = { show: hov !== null };
+    if (hov !== null) {
+      tip.x = x(hov).toFixed(1);
+      tip.left = pts[hov].left;
+      tip.top = (y(vals[hov]) - 16).toFixed(1) + 'px';
+      tip.shift = hov <= 1 ? '-12%' : (hov >= last - 1 ? '-88%' : '-50%');
+      tip.money = this.eur(vals[hov]);
+      tip.when = dayFmt(weekEnd(hov) - 6) + '–' + dayFmt(weekEnd(hov)) + ' · ' +
+        (hov === last ? 'цей тиждень' : (hov === last - 1 ? 'минулий тиждень' : (last - hov) + ' ' + this.plural(last - hov, 'тиждень', 'тижні', 'тижнів') + ' тому'));
+    }
+    const cur = vals[last], prev = vals[last - 1];
+    const bandN = period === '7' ? 1 : (period === '30' ? 4 : 0);
+    const bandX = x(this.NW - bandN) - step / 2;
+    const chart = {
+      title: 'Сума замовлень по тижнях · ' + this.NW + ' тижнів · наведіть на точку',
+      points: pts.map(p => p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' '),
+      pts: pts, ticks: ticks, labels: labels, tip: tip,
+      band: { show: bandN > 0, x: bandX.toFixed(1), w: (1000 - bandX).toFixed(1) }
+    };
+
+    const dAbs = cur - prev;
+    const deltaText = prev < 1 && cur >= 1
+      ? 'з нуля до ' + this.eur(cur)
+      : (cur < 1 && prev < 1 ? 'оплат не було' : (dAbs >= 0 ? '+' : '−') + this.eur(Math.abs(dAbs)) + ' (' + (dAbs >= 0 ? '+' : '−') + this.pc(prev ? Math.abs(dAbs) / prev * 100 : 0, 0) + ')');
+    const deltaColor = prev < 1 && cur >= 1 ? this.GREEN : (dAbs >= 0 ? this.GREEN : 'var(--color-accent)');
+
+    // середній чек = сума перших замовлень / к-сть оплат (формула таблиці)
+    const avgCheck = agg.pays ? agg.first / agg.pays : 0;
+    let grow = 0;
+    for (let i = last; i > 0; i--) { if (vals[i] > vals[i - 1]) grow++; else break; }
+    const isMax = cur >= max - 0.01 && cur > 0;
+    const moneyNote = agg.sum < 1
+      ? 'У цьому зрізі ще не було жодної оплати. Ліди є, грошей немає — причину шукайте в блоці «Де губимо лідів?».'
+      : (dAbs >= 0
+        ? (isMax ? 'Останній тиждень — найсильніший за всі ' + this.NW + ': ' + this.eur(cur) + ', це +' + this.pc(prev ? dAbs / prev * 100 : 0, 0) + ' до попереднього.' : 'Останній тиждень сильніший за попередній на ' + this.eur(dAbs) + '. Зростання ' + grow + ' ' + this.plural(grow, 'тиждень', 'тижні', 'тижнів') + ' поспіль.')
+        : 'Останній тиждень слабший за попередній на ' + this.eur(Math.abs(dAbs)) + '. Перевірте, чи не просів найбільший ринок.');
+
+    // ── воронка (4 реальні етапи таблиці) ──
+    const advice = {
+      'Цільовий': 'багато нерелевантних заявок — перевірте налаштування реклами',
+      'Діалог': 'ліди не відповідають на перший лист',
+      'Оплата': 'до оплати доходить менше ніж кожен пʼятий діалог'
+    };
+    const raw = [
+      { name: 'Запит', n: agg.leads, human: 'усі заявки, що прийшли' },
+      { name: 'Цільовий', n: agg.targ, human: 'із них справді наша аудиторія' },
+      { name: 'Діалог', n: agg.dial, human: 'відповіли й почали спілкування', convLabel: 'відповідають на перший лист' },
+      { name: 'Оплата', n: agg.pays, human: 'заплатили' }
+    ];
+    const convs = raw.map((s, i) => i === 0 || raw[i - 1].n === 0 ? null : s.n / raw[i - 1].n * 100);
+    let weakI = -1, weakV = 101;
+    convs.forEach((v, i) => { if (v !== null && v < weakV) { weakV = v; weakI = i; } });
+    const fmax = Math.max(raw[0].n, 1);
+    const funnel = raw.map((s, i) => {
+      const isWeak = i === weakI;
+      return {
+        name: s.name, nFmt: this.fmt(s.n), human: s.human,
+        w: Math.max(s.n / fmax * 100, s.n > 0 ? 0.7 : 0).toFixed(2) + '%',
+        barColor: isWeak ? 'var(--color-accent)' : 'var(--color-text)',
+        hasConv: convs[i] !== null,
+        convPct: convs[i] === null ? '' : this.pc(convs[i]),
+        convLabel: convs[i] === null ? '' : (s.convLabel || ('доходять до етапу «' + s.name.toLowerCase() + '»')),
+        convColor: isWeak ? 'var(--color-accent)' : 'var(--color-neutral-700)',
+        isWeak: isWeak, advice: isWeak ? advice[s.name] || '' : ''
+      };
+    });
+    const noAnswer = raw[1].n ? Math.min(Math.round(10 - raw[2].n / raw[1].n * 10), raw[2].n > 0 ? 9 : 10) : 0;
+    const paidOfDial = raw[2].n ? Math.round(raw[3].n / raw[2].n * 10) : 0;
+    const funnelNote = weakI > 0 ? 'Найбільше губимо на першому листі.' : 'Замало даних, щоб назвати найслабший етап.';
+    const funnelNote2 = weakI > 0
+      ? 'З ' + this.fmt(raw[1].n) + ' цільових лідів у діалог заходить ' + this.fmt(raw[2].n) + ' — не відповідає ' + noAnswer + ' із 10. Зате з тих, хто заговорив, платить ' + paidOfDial + ' із 10: розмова вартує дорожче за нового ліда. CR запит→оплата = ' + this.pc(raw[0].n ? raw[3].n / raw[0].n * 100 : 0, 2) + '.'
+      : 'Спробуйте розширити зріз: зняти фільтр країни або взяти весь час.';
+
+    const rsum = agg.rz.reduce((a, v) => a + v, 0);
+    const rmax = Math.max.apply(null, agg.rz.concat([1]));
+    const reasons = agg.rz.map((n, i) => ({
+      name: this.RLABEL[i], nFmt: this.fmt(n),
+      pct: this.pc(rsum ? n / rsum * 100 : 0, 0),
+      w: (n / rmax * 100).toFixed(1) + '%',
+      color: i === 0 ? 'var(--color-accent)' : (i === 5 ? 'var(--color-neutral-500)' : 'var(--color-text)')
+    }));
+    const known = agg.rz[2] + agg.rz[3] + agg.rz[4];
+    const reasonsNote = 'Явну причину зупинки менеджер записав лише у ' + this.fmt(known) + ' з ' + this.fmt(rsum) + ' лідів без оплати. Решта — тиша у відповідь.';
+
+    // ── антирейтинг: поки є країни з нульовими оплатами — показуємо їх;
+    //    коли платити почнуть усі, лишається трійка найслабших знизу списку. ──
+    const withLeads = C.per.filter(p => p.leads > 0);
+    const zeroPay = withLeads.filter(p => p.sum < 1).sort((a, b) => b.leads - a.leads);
+    const anti = zeroPay.length
+      ? { list: zeroPay, label: 'де 0 оплат', zero: true }
+      : { list: withLeads.slice().sort((a, b) => a.sum - b.sum).slice(0, Math.min(3, withLeads.length)), label: 'антирейтинг', zero: false };
+
+    // ── бублик: розподіл лідів по етапах, власний зріз ──
+    const dScope = this.state.donut;
+    const dIsCountry = this.ORDER.indexOf(dScope) >= 0;
+    const dPick = dScope === 'all' ? C.per
+      : (dScope === 'top3' ? C.per.slice().sort((a, b) => b.sum - a.sum).slice(0, 3)
+      : (dScope === 'anti' ? anti.list
+      : (dIsCountry ? C.per.filter(p => p.c === dScope) : C.per.filter(p => p.m === dScope))));
+    const dStg = dPick.reduce((a, p) => { p.stg.forEach((v, i) => a[i] += v); return a; }, [0, 0, 0, 0]);
+    const dTotal = dStg.reduce((a, v) => a + v, 0);
+    const RAD = 70, CIRC = 2 * Math.PI * RAD;
+    let acc = 0;
+    const donutArcs = dStg.map((v, i) => {
+      const frac = dTotal ? v / dTotal : 0;
+      const arc = { len: (frac * CIRC).toFixed(2) + ' ' + CIRC.toFixed(2), off: (-acc * CIRC).toFixed(2), col: this.STAGES[i].col, show: v > 0 };
+      acc += frac;
+      return arc;
+    });
+    const donutRows = dStg.map((v, i) => ({
+      name: this.STAGES[i].n, note: this.STAGES[i].d, col: this.STAGES[i].col,
+      n: this.fmt(v), pct: this.pc(dTotal ? v / dTotal * 100 : 0, 1),
+      w: (dTotal ? v / dTotal * 100 : 0).toFixed(2) + '%'
+    }));
+    const donutScopes = [{ v: 'all', l: 'усі 14' }].concat(this.MG.map(m => ({ v: m, l: m })))
+      .concat([{ v: 'top3', l: 'ТОП-3' }, { v: 'anti', l: anti.label }]).map(o => ({
+        label: o.l,
+        cls: dScope === o.v ? 'btn btn-primary' : 'btn btn-secondary',
+        pick: () => this.setState({ donut: o.v })
+      }));
+    const dNames = dScope === 'all' ? 'усі 14 країн' : dPick.map(p => p.c).join(', ');
+    const donut = {
+      arcs: donutArcs, rows: donutRows, total: this.fmt(dTotal),
+      scopes: donutScopes, names: dNames,
+      countryValue: dIsCountry ? dScope : 'all',
+      countryOpts: [{ value: 'all', label: 'усі країни' }].concat(this.ORDER.map(c => ({ value: c, label: c }))),
+      onCountry: e => this.setState({ donut: e.target.value }),
+      note: dTotal
+        ? this.pc(dTotal ? dStg[1] / dTotal * 100 : 0, 0) + ' бази стоїть на «Цільовому» — це ліди, які підходять нам, але не відповіли. Саме вони, а не нові заявки, — найдешевший резерв виручки.'
+        : 'У цьому зрізі лідів немає.'
+    };
+
+    // ── менеджери × країни (сума M+O, к-сть = етап 5, чек = перші/к-сть — формули таблиці) ──
+    const mgTable = [];
+    this.MG.forEach(name => {
+      const cs = C.base.filter(p => p.m === name);
+      if (!cs.length) return;
+      const sum = cs.reduce((a, p) => a + p.sum, 0);
+      const first = cs.reduce((a, p) => a + p.first, 0);
+      const pays = cs.reduce((a, p) => a + p.pays, 0);
+      cs.slice().sort((a, b) => b.sum - a.sum).forEach((p, i) => mgTable.push({
+        mgr: i === 0 ? name : '', c: p.c,
+        sum: p.sum ? this.eur(p.sum) : '—',
+        pays: this.fmt(p.pays),
+        chk: p.pays ? this.eur(p.first / p.pays) : '—',
+        col: p.sum < 1 ? 'var(--color-neutral-600)' : 'var(--color-text)',
+        weight: '400', bt: i === 0 ? '2px solid var(--color-divider)' : '1px solid var(--color-divider)', bg: 'transparent'
+      }));
+      mgTable.push({
+        mgr: '', c: 'разом', sum: this.eur(sum), pays: this.fmt(pays),
+        chk: pays ? this.eur(first / pays) : '—',
+        col: 'var(--color-text)', weight: '600', bt: '1px solid var(--color-divider)',
+        bg: 'color-mix(in srgb, var(--color-text) 5%, transparent)'
+      });
+    });
+
+    // ── три рейтинги країн; однакове значення = однакове місце ──
+    const ranking = (val, fmt) => {
+      const arr = C.base.slice().sort((a, b) => val(b) - val(a) || a.c.localeCompare(b.c, 'uk'));
+      let place = 0, prev = null;
+      return arr.map((p, i) => {
+        const v = val(p);
+        if (prev === null || Math.abs(v - prev) > 0.005) place = i + 1;
+        prev = v;
+        return { n: place, c: p.c, v: fmt(p, v), dim: v > 0 ? 'var(--color-text)' : 'var(--color-neutral-600)' };
+      });
+    };
+    const ranks = [
+      { title: 'По сумі замовлень', unit: 'сума', rows: ranking(p => p.sum, (p, v) => this.eur(v)) },
+      { title: 'По к-сті замовлень', unit: 'к-сть', rows: ranking(p => p.pays, (p, v) => this.fmt(v)) },
+      { title: 'По середньому чеку', unit: 'чек', rows: ranking(p => p.pays ? p.first / p.pays : 0, (p, v) => v ? this.eur(v) : '—') }
+    ];
+
+    // ── країни ──
+    const map = { c: 'c', m: 'm', leads: 'leads', targ: 'targ', pays: 'pays', cr: 'cr', sum: 'sum', sum7: 'sum7' };
+    const sk = map[this.state.sortKey] || 'sum';
+    const dir = this.state.sortDir;
+    const withCr = C.base.filter(p => p.leads > 0 || p.sum > 0).map(p => Object.assign({}, p, { cr: p.leads ? p.pays / p.leads * 100 : 0 }));
+    const sorted = withCr.slice().sort((a, b) => {
+      const va = a[sk], vb = b[sk];
+      if (typeof va === 'string') return va.localeCompare(vb, 'uk') * -dir;
+      return (va - vb) * dir;
+    });
+    const cols = [
+      { key: 'c', label: 'Країна', align: 'left' },
+      { key: 'm', label: 'Менеджер', align: 'left' },
+      { key: 'leads', label: 'Ліди', align: 'right' },
+      { key: 'targ', label: 'Цільові', align: 'right' },
+      { key: 'pays', label: 'Оплати', align: 'right' },
+      { key: 'cr', label: 'Платить (з усіх лідів)', align: 'right' },
+      { key: 'sum', label: 'Сума', align: 'right' },
+      { key: 'sum7', label: 'За 7 днів', align: 'right' }
+    ].map(c => ({
+      key: c.key, label: c.label, align: c.align,
+      arrow: this.state.sortKey === c.key ? (dir === -1 ? ' ↓' : ' ↑') : '',
+      sort: () => this.setSort(c.key)
+    }));
+    const rows = sorted.map(r => ({
+      c: r.c, m: r.m, leads: this.fmt(r.leads), targ: this.fmt(r.targ), pays: this.fmt(r.pays),
+      payColor: r.pays === 0 && r.leads > 0 ? 'var(--color-accent)' : 'var(--color-text)',
+      cr: this.oneIn(r.pays, r.leads),
+      sum: r.sum ? this.eur(r.sum) : '—',
+      sum7: r.sum7 ? this.eur(r.sum7) : '—'
+    }));
+
+    const zeroRows = C.base.filter(r => r.sum < 1 && r.leads > 0).sort((a, b) => b.leads - a.leads);
+    const redZone = {
+      has: zeroRows.length > 0,
+      leadsFmt: this.fmt(zeroRows.reduce((a, r) => a + r.leads, 0)),
+      items: zeroRows.map(r => ({ name: r.c, leads: this.fmt(r.leads) + ' лідів' }))
+    };
+
+    const top = C.base.slice().sort((a, b) => b.sum - a.sum)[0];
+    const totalAll = C.per.reduce((a, r) => a + r.sum, 0);
+    const concentration = !top || !agg.sum
+      ? 'У цьому зрізі виручки ще немає.'
+      : (C.base.length === 1
+        ? top.c + ' дає ' + this.pc(totalAll ? top.sum / totalAll * 100 : 0, 0) + ' усієї виручки компанії — ' + this.eur(top.sum) + ' з ' + this.eur(totalAll) + '.'
+        : top.c + ' дає ' + this.pc(top.sum / agg.sum * 100, 0) + ' усієї виручки — ' + this.eur(top.sum) + ' з ' + this.eur(agg.sum) + '.');
+
+    // ── картка однієї країни ──
+    const n14 = C.per.length;
+    const avgSum = C.per.reduce((a, r) => a + r.sum, 0) / n14;
+    const avgLeads = C.per.reduce((a, r) => a + r.leads, 0) / n14;
+    const avgPays = C.per.reduce((a, r) => a + r.pays, 0) / n14;
+    const respAll = C.per.reduce((a, r) => ({ s: a.s + r.resp, n: a.n + r.respN }), { s: 0, n: 0 });
+    const one = C.base[0];
+    const single = { on: this.state.sel.length === 1 && !!one, name: one ? one.c : '', manager: one ? one.m : '', cards: [] };
+    if (single.on) {
+      const cmp = (v, a) => v >= a ? this.GREEN : 'var(--color-accent)';
+      const oneResp = one.respN ? one.resp / one.respN : null;
+      const avgResp = respAll.n ? respAll.s / respAll.n : null;
+      single.cards = [
+        { label: 'сума замовлень', value: one.sum ? this.eur(one.sum) : '0 €', avg: this.eur(avgSum), color: cmp(one.sum, avgSum) },
+        { label: 'ліди', value: this.fmt(one.leads), avg: this.fmt(avgLeads), color: 'var(--color-text)' },
+        { label: 'оплати', value: this.fmt(one.pays), avg: this.fmt(avgPays), color: cmp(one.pays, avgPays) },
+        { label: 'платить з усіх лідів', value: this.oneIn(one.pays, one.leads), avg: this.oneIn(avgPays, avgLeads), color: cmp(one.leads ? one.pays / one.leads : 0, avgLeads ? avgPays / avgLeads : 0) },
+        { label: 'днів до першого листа', value: oneResp === null ? 'немає дат' : this.dec(oneResp), avg: avgResp === null ? '—' : this.dec(avgResp), color: oneResp === null ? 'var(--color-neutral-500)' : (oneResp <= 1.5 ? this.GREEN : (oneResp <= 3 ? this.AMBER : 'var(--color-accent)')) }
+      ];
+    }
+
+    // ── менеджери ──
+    const gm = {};
+    C.base.filter(r => r.leads > 0 || r.sum > 0).forEach(r => {
+      const g = gm[r.m] || (gm[r.m] = { name: r.m, sum: 0, leads: 0, pays: 0, cs: [] });
+      g.sum += r.sum; g.leads += r.leads; g.pays += r.pays; g.cs.push(r.c);
+    });
+    const gArr = Object.keys(gm).map(k => gm[k]).sort((a, b) => b.sum - a.sum);
+    const bestPer = Math.max.apply(null, gArr.map(g => g.leads ? g.sum / g.leads * 100 : 0).concat([1]));
+    const managers = gArr.map(g => {
+      const per100 = g.leads ? g.sum / g.leads * 100 : 0;
+      return {
+        name: g.name,
+        countries: g.cs.length + ' ' + this.plural(g.cs.length, 'країна', 'країни', 'країн') + ': ' + g.cs.join(', '),
+        sumFmt: this.eur(g.sum),
+        perFmt: period === 'all' ? this.eur(per100) + ' на 100 лідів' : '',
+        perColor: per100 >= bestPer * 0.75 ? this.GREEN : (per100 > 0 ? 'var(--color-text)' : 'var(--color-accent)'),
+        meta: this.fmt(g.leads) + ' ' + this.plural(g.leads, 'лід', 'ліди', 'лідів') + ' · ' + this.fmt(g.pays) + ' ' + this.plural(g.pays, 'оплата', 'оплати', 'оплат') + ' · платить ' + this.oneIn(g.pays, g.leads) + ' з усіх його лідів'
+      };
+    });
+    const topM = gArr[0], bestNorm = gArr.slice().sort((a, b) => (b.leads ? b.sum / b.leads : 0) - (a.leads ? a.sum / a.leads : 0))[0];
+    const managersNote = managers.length > 1
+      ? 'Території нерівні: у Катерини шість країн, у Саші О. — дві. ' + (topM && bestNorm && topM.name !== bestNorm.name
+        ? 'За абсолютною сумою попереду ' + topM.name + ', але на 100 лідів найкраще конвертує ' + bestNorm.name + ' — ' + this.eur(bestNorm.leads ? bestNorm.sum / bestNorm.leads * 100 : 0) + '.'
+        : 'Тому візьміть до уваги суму разом із рядком «на 100 лідів» — він нормує розмір території.')
+      : 'Один менеджер у зрізі.';
+
+    // ── маркетинг ──
+    const srcRows = C.src.map(s => ({
+      name: s.name, leads: this.fmt(s.leads), pays: this.fmt(s.pays),
+      payColor: s.pays === 0 ? 'var(--color-accent)' : 'var(--color-text)',
+      cr: this.oneIn(s.pays, s.leads),
+      sum: s.sum ? this.eur(s.sum) : '—'
+    }));
+    const avgChkAll = agg.pays ? agg.first / agg.pays : 0;
+    const typeRows = C.typ.slice().sort((a, b) => b.leads - a.leads).map(t => {
+      const chk = t.pays ? t.first / t.pays : 0;
+      return {
+        name: t.name, leads: this.fmt(t.leads), pays: this.fmt(t.pays),
+        chk: chk ? this.eur(chk) : '—',
+        chkColor: chk > avgChkAll * 2 ? 'var(--color-accent)' : 'var(--color-text)',
+        sum: t.sum ? this.eur(t.sum) : '—'
+      };
+    });
+    // Шукаємо за назвою, а не за позицією: порядок типів залежить від таблиці.
+    const noTypeRow = C.typ.filter(t => t.name === 'Без типу')[0];
+    const noType = noTypeRow ? noTypeRow.leads : 0;
+    const marketingNote = 'Дві третини лідів — салони краси, вони ж дають більшість оплат. Але найбільший чек приходить не звідти, а з дрібних сегментів, де лідів одиниці.';
+    const rich = C.typ.filter(t => t.pays > 0 && avgChkAll && t.first / t.pays > avgChkAll * 2).sort((a, b) => b.first / b.pays - a.first / a.pays)[0];
+    const anomalyNote = rich
+      ? 'Аномалія: «' + rich.name + '» — ' + this.fmt(rich.leads) + ' ' + this.plural(rich.leads, 'лід', 'ліди', 'лідів') + ' і ' + this.fmt(rich.pays) + ' ' + this.plural(rich.pays, 'оплата', 'оплати', 'оплат') + ', але чек ' + this.eur(rich.first / rich.pays) + ' — у ' + this.dec(rich.first / rich.pays / avgChkAll, 1) + ' раза вищий за середній. Таких лідів мало, варто пошукати ще.'
+      : 'У цьому зрізі помітних аномалій по чеку немає.';
+    const quality = 'Якість даних: без джерела — 0 · без типу бізнесу — ' + this.fmt(noType) + (agg.leads ? ' (' + this.pc(noType / agg.leads * 100, 0) + ' лідів зрізу)' : '') + ' — у розрізі «хто саме купує» вони йдуть окремим рядком, а не зникають.';
+
+    // ── дисципліна ──
+    const withResp = C.base.filter(r => r.respN > 0).map(r => ({ c: r.c, v: r.resp / r.respN }));
+    const respMax = Math.max.apply(null, withResp.map(r => r.v).concat([1]));
+    const respRows = withResp.sort((a, b) => b.v - a.v).map(r => ({
+      name: r.c, days: this.dec(r.v) + ' дн.',
+      w: (r.v / respMax * 100).toFixed(1) + '%',
+      color: r.v <= 1.5 ? this.GREEN : (r.v <= 3 ? this.AMBER : 'var(--color-accent)')
+    }));
+    const noResp = C.base.filter(r => r.respN === 0 && r.leads > 0).map(r => r.c);
+    const disc = {
+      need: this.fmt(agg.need), red: this.fmt(agg.red),
+      note: agg.leads
+        ? 'Дії потребує ' + this.pc(agg.need / agg.leads * 100, 0) + ' бази, і більшість із них — прострочені. Країни, де перший лист іде понад 3 дні, не дали жодної оплати: це та ж червона зона.'
+        : 'У цьому зрізі лідів немає.',
+      respRows: respRows,
+      respNote: noResp.length
+        ? 'Дат першого листа немає у ' + noResp.length + ' ' + this.plural(noResp.length, 'країни', 'країнах', 'країнах') + ' (' + noResp.join(', ') + ') — колонка J там не заповнювалась, тож у рейтинг вони не входять.'
+        : 'Дати першого листа заповнені по всіх країнах зрізу.',
+      tail: this.props.showCleanupTail === false ? '' : 'Хвіст чистки: дублів не розібрано — ' + this.fmt(agg.dup) + ' · оплат без картки ліда — ' + this.fmt(agg.noCard) + ' (у них немає email, типу і джерела, тому в розрізах вони випадають) · оплат зі статусом «5 · Оплата», але без суми в таблиці — ' + this.fmt(agg.noSum) + '.'
+    };
+
+    // ── фільтри ──
+    const countryOpts = this.ORDER.map(name => {
+      const on = this.state.sel.indexOf(name) >= 0;
+      return {
+        name: name,
+        cls: on ? 'btn btn-primary' : 'btn btn-secondary',
+        toggle: () => this.setState(s => ({ sel: s.sel.indexOf(name) >= 0 ? s.sel.filter(v => v !== name) : s.sel.concat([name]) }))
+      };
+    });
+    const byMoney = C.per.slice().sort((a, b) => b.sum - a.sum);
+    const best = byMoney.filter(r => r.sum > 0).map(r => r.c);
+    const same = list => list.length === this.state.sel.length && list.every(v => this.state.sel.indexOf(v) >= 0);
+    const presets = [
+      { label: 'усі 14', list: [] },
+      { label: 'ТОП-3', list: byMoney.slice(0, 3).map(r => r.c) },
+      { label: 'де є оплати', list: best },
+      { label: anti.label, list: anti.list.map(r => r.c) }
+    ];
+    const presetOpts = presets.map(p => {
+      const on = p.list.length ? same(p.list) : this.state.sel.length === 0;
+      return {
+        label: p.label,
+        style: 'font: inherit; font-size: 11px; font-weight: 600; letter-spacing: 0.02em; cursor: pointer; padding: 3px 8px; border: 1px solid ' +
+          (on ? 'var(--color-text)' : 'var(--color-divider)') + '; background: ' + (on ? 'var(--color-text)' : 'transparent') +
+          '; color: ' + (on ? 'var(--color-bg)' : 'var(--color-neutral-700)') + ';',
+        pick: () => this.setState({ sel: p.list.slice() })
+      };
+    });
+    const periodOpts = [{ v: '7', l: '7 днів' }, { v: '30', l: '30 днів' }, { v: 'all', l: 'весь час' }].map(p => ({
+      label: p.l,
+      style: 'font-family: var(--font-body); border: 0; cursor: pointer; ' + (period === p.v
+        ? 'background: var(--color-accent); color: var(--color-bg); font-weight: 600;'
+        : 'background: transparent; color: var(--color-text);'),
+      pick: () => this.setState({ period: p.v })
+    }));
+
+    const chips = [];
+    if (this.state.sel.length) chips.push({ text: this.state.sel.length > 2 ? this.state.sel.length + ' ' + this.plural(this.state.sel.length, 'країна', 'країни', 'країн') : this.state.sel.join(' · '), clear: () => this.setState({ sel: [] }) });
+    if (period !== 'all') chips.push({ text: perLabel, clear: () => this.setState({ period: 'all' }) });
+    if (this.state.source !== 'all') chips.push({ text: this.state.source, clear: () => this.setState({ source: 'all' }) });
+    if (this.state.type !== 'all') chips.push({ text: this.state.type, clear: () => this.setState({ type: 'all' }) });
+
+    return {
+      stamp: this.props.stamp || this.CFG.stamp,
+      buildNote: this.BUILD ? ' · збірка ' + this.BUILD : '',
+      countryOpts: countryOpts, presetOpts: presetOpts, periodOpts: periodOpts,
+      sourceOpts: [{ value: 'all', label: 'усі джерела' }].concat(this.SRC.map(s => ({ value: s, label: s }))),
+      typeOpts: [{ value: 'all', label: 'усі типи' }].concat(this.TYP.map(t => ({ value: t, label: t }))),
+      sourceValue: this.state.source, typeValue: this.state.type,
+      onSource: e => this.setState({ source: e.target.value }),
+      onType: e => this.setState({ type: e.target.value }),
+      chips: chips, hasChips: chips.length > 0,
+      resetAll: () => this.setState({ sel: [], period: 'all', source: 'all', type: 'all' }),
+      m: {
+        sumFmt: this.eur(agg.sum),
+        sumLabel: 'сума замовлень · ' + perLabel + (period === 'all' ? ' (' + this.NW + ' тижнів)' : ' · за датою оплати'),
+        sum7Fmt: this.eur(cur), deltaText: deltaText, deltaColor: deltaColor
+      },
+      perNote: ' · ' + perLabel, perLabel: perLabel,
+      smallCards: [
+        { value: this.fmt(agg.pays), label: 'перших замовлень', per: perLabel },
+        { value: this.fmt(agg.rep), label: 'повторних замовлень', per: perLabel },
+        { value: avgCheck ? this.eur(avgCheck) : '—', label: 'середній чек', per: perLabel },
+        { value: this.fmt(agg.leads7), label: 'нових лідів', per: 'останні 7 днів' }
+      ],
+      chart: chart,
+      moneyNote: this.props.showConclusions === false ? '' : moneyNote,
+      funnel: funnel,
+      funnelNote: this.props.showConclusions === false ? '' : funnelNote,
+      funnelNote2: this.props.showConclusions === false ? '' : funnelNote2,
+      reasons: reasons, reasonsNote: reasonsNote,
+      cols: cols, rows: rows, showRank: !single.on, single: single,
+      redZone: redZone, concentration: concentration,
+      managers: managers,
+      managersNote: this.props.showConclusions === false ? '' : managersNote,
+      srcRows: srcRows, typeRows: typeRows,
+      marketingNote: this.props.showConclusions === false ? '' : marketingNote,
+      anomalyNote: anomalyNote, quality: quality, disc: disc,
+      donut: donut, mgTable: mgTable, ranks: ranks,
+      mgTableNote: 'Сума — перші плюс повторні замовлення. К-сть — рядки з етапом «5 · Оплата». '
+        + 'Чек — сума перших замовлень поділена на к-сть, як і у формулі самої таблиці.'
+    };
+  }
+}
+
+</script>

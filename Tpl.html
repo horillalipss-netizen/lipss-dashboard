@@ -1,0 +1,508 @@
+<div style="background: var(--color-bg); color: var(--color-text); font-family: var(--font-body); min-height: 100vh; padding-bottom: 80px">
+
+  <div style="position: sticky; top: 0; z-index: 30; background: var(--color-bg); border-bottom: 2px solid var(--color-divider)">
+    <div style="max-width: 1320px; margin: 0 auto; padding: 14px 28px 12px; display: flex; flex-direction: column; gap: 12px">
+
+      <div style="display: flex; align-items: baseline; gap: 20px; flex-wrap: wrap">
+        <div style="font-family: var(--font-heading); font-weight: 800; font-size: 17px; letter-spacing: 0.02em">LIPSS · B2B EXPORT</div>
+        <div style="font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-neutral-600)">Продажі на експорт · оновлення 3× на день</div>
+        <div style="margin-left: auto; font-size: 11px; color: var(--color-neutral-600)">{{ stamp }}{{ buildNote }}</div>
+      </div>
+
+      <div style="display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start">
+        <div style="display: flex; flex-direction: column; gap: 6px; flex: 1 1 460px; min-width: 280px">
+          <div style="display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap">
+            <div style="font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-neutral-600)">Країна</div>
+            <div style="display: flex; gap: 4px; flex-wrap: wrap">
+              <sc-for list="{{ presetOpts }}" as="pr" hint-placeholder-count="4">
+                <button type="button" onClick="{{ pr.pick }}" style="{{ pr.style }}">{{ pr.label }}</button>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 4px">
+            <sc-for list="{{ countryOpts }}" as="c" hint-placeholder-count="14">
+              <button type="button" class="{{ c.cls }}" onClick="{{ c.toggle }}" style="font-size: 12px; padding: 4px 9px; font-weight: 500">{{ c.name }}</button>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <div style="font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-neutral-600)">Період</div>
+          <div class="seg">
+            <sc-for list="{{ periodOpts }}" as="p" hint-placeholder-count="3">
+              <button type="button" class="seg-opt" onClick="{{ p.pick }}" style="{{ p.style }}">{{ p.label }}</button>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 6px; min-width: 160px">
+          <div style="font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-neutral-600)">Джерело</div>
+          <select class="input" value="{{ sourceValue }}" onChange="{{ onSource }}" style="font-size: 13px; min-height: 32px">
+            <sc-for list="{{ sourceOpts }}" as="s" hint-placeholder-count="4">
+              <option value="{{ s.value }}">{{ s.label }}</option>
+            </sc-for>
+          </select>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 6px; min-width: 170px">
+          <div style="font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-neutral-600)">Тип бізнесу</div>
+          <select class="input" value="{{ typeValue }}" onChange="{{ onType }}" style="font-size: 13px; min-height: 32px">
+            <sc-for list="{{ typeOpts }}" as="t" hint-placeholder-count="11">
+              <option value="{{ t.value }}">{{ t.label }}</option>
+            </sc-for>
+          </select>
+        </div>
+      </div>
+
+      <sc-if value="{{ hasChips }}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding-top: 2px">
+          <div style="font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-neutral-600)">Зріз</div>
+          <sc-for list="{{ chips }}" as="ch" hint-placeholder-count="2">
+            <button type="button" onClick="{{ ch.clear }}" style="display: inline-flex; align-items: center; gap: 8px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; background: var(--color-accent); color: var(--color-bg); border: 0; padding: 4px 9px">{{ ch.text }} <span style="opacity: 0.75">✕</span></button>
+          </sc-for>
+          <button type="button" class="btn btn-ghost" onClick="{{ resetAll }}" style="font-size: 12px">Скинути все</button>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+
+  <div style="max-width: 1320px; margin: 0 auto; padding: 0 28px">
+
+    <section data-screen-label="01 Гроші" style="padding: 56px 0 48px">
+      <div style="font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-neutral-600); margin-bottom: 10px">01 · Гроші</div>
+      <h2 style="font-size: clamp(28px, 3.4vw, 40px); margin: 0 0 40px">Скільки заробляємо?</h2>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 56px 72px; align-items: flex-end; margin-bottom: 48px">
+        <div>
+          <div style="font-family: var(--font-heading); font-weight: 800; font-size: clamp(56px, 8vw, 104px); line-height: 0.92; letter-spacing: -0.035em">{{ m.sumFmt }}</div>
+          <div style="font-size: 14px; color: var(--color-neutral-700); margin-top: 10px">{{ m.sumLabel }}</div>
+        </div>
+        <div style="padding-bottom: 6px">
+          <div style="font-family: var(--font-heading); font-weight: 800; font-size: clamp(30px, 3.6vw, 44px); line-height: 1; letter-spacing: -0.02em">{{ m.sum7Fmt }}</div>
+          <div style="font-size: 13px; color: var(--color-neutral-700); margin-top: 8px">за останні 7 днів</div>
+          <div style="font-size: 18px; font-weight: 600; margin-top: 10px; color: {{ m.deltaColor }}">{{ m.deltaText }}</div>
+          <div style="font-size: 12px; color: var(--color-neutral-600); margin-top: 2px">у порівнянні з попереднім тижнем</div>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 40px; align-items: start">
+        <div style="border-top: 2px solid var(--color-divider); padding-top: 16px">
+          <div style="font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-neutral-600); margin-bottom: 14px">{{ chart.title }}</div>
+
+          <!-- Підписи графіка — HTML поверх SVG, а не <text> усередині нього:
+               рантайм загортає кожен {{ }} у <span>, який у SVG не рендериться,
+               плюс SVG тут розтягується без збереження пропорцій і сплющував би текст. -->
+          <div style="display: flex; gap: 10px; align-items: flex-start">
+
+            <div style="position: relative; width: 74px; flex: none; height: 240px">
+              <div style="position: absolute; right: 0; top: -2px; font-size: 10px; letter-spacing: 0.1em; color: var(--color-neutral-600)">ЄВРО</div>
+              <sc-for list="{{ chart.ticks }}" as="t" hint-placeholder-count="3">
+                <div style="position: absolute; right: 0; top: {{ t.top }}; transform: translateY(-50%); font-size: 12px; color: var(--color-neutral-700); white-space: nowrap">{{ t.label }}</div>
+              </sc-for>
+            </div>
+
+            <div style="flex: 1; min-width: 0">
+              <div style="position: relative">
+                <svg viewBox="0 0 1000 240" preserveAspectRatio="none" style="width: 100%; height: 240px; display: block">
+                  <sc-if value="{{ chart.band.show }}" hint-placeholder-val="{{ false }}">
+                    <rect x="{{ chart.band.x }}" y="6" width="{{ chart.band.w }}" height="214" fill="var(--color-accent-100)"></rect>
+                  </sc-if>
+                  <sc-for list="{{ chart.ticks }}" as="t" hint-placeholder-count="3">
+                    <line x1="0" y1="{{ t.y }}" x2="1000" y2="{{ t.y }}" stroke="var(--color-neutral-300)" stroke-width="1"></line>
+                  </sc-for>
+                  <line x1="0" y1="220" x2="1000" y2="220" stroke="var(--color-divider)" stroke-width="2"></line>
+                  <line x1="1" y1="6" x2="1" y2="220" stroke="var(--color-divider)" stroke-width="2"></line>
+                  <sc-if value="{{ chart.tip.show }}" hint-placeholder-val="{{ false }}">
+                    <line x1="{{ chart.tip.x }}" y1="6" x2="{{ chart.tip.x }}" y2="220" stroke="var(--color-accent)" stroke-width="1" pointer-events="none"></line>
+                  </sc-if>
+                  <polyline points="{{ chart.points }}" fill="none" stroke="var(--color-text)" stroke-width="2.5" pointer-events="none"></polyline>
+                  <sc-for list="{{ chart.pts }}" as="p" hint-placeholder-count="8">
+                    <rect x="{{ p.hx }}" y="0" width="{{ p.hw }}" height="240" fill="transparent" onMouseEnter="{{ p.enter }}" onMouseLeave="{{ p.leave }}" style="cursor: crosshair"></rect>
+                  </sc-for>
+                </svg>
+
+                <sc-for list="{{ chart.pts }}" as="p" hint-placeholder-count="8">
+                  <div style="position: absolute; left: {{ p.left }}; top: {{ p.top }}; width: {{ p.size }}; height: {{ p.size }}; transform: translate(-50%, -50%); border-radius: 50%; background: {{ p.fill }}; pointer-events: none"></div>
+                </sc-for>
+                <sc-for list="{{ chart.labels }}" as="l" hint-placeholder-count="3">
+                  <div style="position: absolute; left: {{ l.left }}; top: {{ l.top }}; transform: translate({{ l.shift }}, -100%); font-size: 13px; font-weight: 600; color: {{ l.color }}; white-space: nowrap; pointer-events: none">{{ l.text }}</div>
+                </sc-for>
+                <sc-if value="{{ chart.tip.show }}" hint-placeholder-val="{{ false }}">
+                  <div style="position: absolute; left: {{ chart.tip.left }}; top: {{ chart.tip.top }}; transform: translate({{ chart.tip.shift }}, -100%); background: var(--color-text); color: var(--color-bg); padding: 9px 13px; white-space: nowrap; pointer-events: none; z-index: 2">
+                    <div style="font-family: var(--font-heading); font-weight: 800; font-size: 17px; line-height: 1.1">{{ chart.tip.money }}</div>
+                    <div style="font-size: 11px; color: var(--color-neutral-400); margin-top: 3px">{{ chart.tip.when }}</div>
+                  </div>
+                </sc-if>
+              </div>
+
+              <div style="position: relative; height: 32px; margin-top: 8px">
+                <sc-for list="{{ chart.pts }}" as="p" hint-placeholder-count="8">
+                  <div style="position: absolute; left: {{ p.left }}; top: 0; transform: translateX(-50%); text-align: center; white-space: nowrap">
+                    <div style="font-size: 11px; color: {{ p.wkColor }}; font-weight: {{ p.wkWeight }}">{{ p.wk1 }}</div>
+                    <div style="font-size: 10px; color: var(--color-accent); font-weight: 600; margin-top: 1px">{{ p.wk2 }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="border-top: 2px solid var(--color-text); padding-top: 16px">
+          <div style="font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-neutral-600); margin-bottom: 10px">Висновок</div>
+          <div style="font-size: 17px; line-height: 1.4; text-wrap: pretty; font-weight: 500">{{ moneyNote }}</div>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 1px; background: var(--color-divider); margin-top: 48px; border-top: 2px solid var(--color-divider); border-bottom: 2px solid var(--color-divider)">
+        <sc-for list="{{ smallCards }}" as="k" hint-placeholder-count="4">
+          <div style="background: var(--color-bg); padding: 20px 20px 22px">
+            <div style="font-family: var(--font-heading); font-weight: 800; font-size: 30px; line-height: 1; letter-spacing: -0.02em">{{ k.value }}</div>
+            <div style="font-size: 13px; color: var(--color-neutral-700); margin-top: 8px">{{ k.label }}</div>
+            <div style="font-size: 11px; color: var(--color-neutral-600); margin-top: 2px">за період: {{ k.per }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <section data-screen-label="02 Воронка" style="padding: 48px 0; border-top: 2px solid var(--color-divider)">
+      <div style="font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-neutral-600); margin-bottom: 10px">02 · Воронка{{ perNote }}</div>
+      <h2 style="font-size: clamp(28px, 3.4vw, 40px); margin: 0 0 12px">Де губимо лідів?</h2>
+      <div style="max-width: 640px; margin-bottom: 40px; display: flex; flex-direction: column; gap: 10px">
+        <div style="font-family: var(--font-heading); font-weight: 800; font-size: clamp(20px, 2vw, 24px); line-height: 1.3; letter-spacing: -0.01em; text-wrap: balance">{{ funnelNote }}</div>
+        <div style="font-size: 15px; line-height: 1.6; color: var(--color-neutral-700); text-wrap: pretty">{{ funnelNote2 }}</div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 56px; align-items: start">
+
+        <div>
+          <sc-for list="{{ funnel }}" as="f" hint-placeholder-count="4">
+            <div>
+              <sc-if value="{{ f.hasConv }}" hint-placeholder-val="{{ false }}">
+                <div style="display: flex; align-items: center; gap: 10px; padding: 8px 0 8px 2px">
+                  <span style="font-size: 13px; font-weight: 600; color: {{ f.convColor }}">↓ {{ f.convPct }}</span>
+                  <span style="font-size: 12px; color: var(--color-neutral-600)">{{ f.convLabel }}</span>
+                </div>
+              </sc-if>
+              <div style="display: flex; align-items: baseline; gap: 14px">
+                <div style="width: 128px; flex: none; font-size: 13px; font-weight: 600">{{ f.name }}</div>
+                <div style="font-family: var(--font-heading); font-weight: 800; font-size: 24px; letter-spacing: -0.02em; width: 92px; flex: none">{{ f.nFmt }}</div>
+                <div style="flex: 1; height: 20px; background: var(--color-neutral-200)">
+                  <div style="height: 100%; background: {{ f.barColor }}; width: {{ f.w }}"></div>
+                </div>
+              </div>
+              <div style="font-size: 12px; color: var(--color-neutral-600); padding: 4px 0 0 142px">{{ f.human }}</div>
+              <sc-if value="{{ f.isWeak }}" hint-placeholder-val="{{ false }}">
+                <div style="margin: 12px 0 4px; padding: 12px 14px; background: var(--color-accent-100); border-left: 3px solid var(--color-accent); font-size: 14px; font-weight: 600; color: var(--color-accent-800)">Найслабший перехід: {{ f.advice }}</div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+
+        <div>
+          <div style="font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-neutral-600); margin-bottom: 14px; border-top: 2px solid var(--color-text); padding-top: 14px">Чому не купують</div>
+          <sc-for list="{{ reasons }}" as="r" hint-placeholder-count="6">
+            <div style="padding: 10px 0; border-bottom: 1px solid var(--color-divider)">
+              <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 6px">
+                <span style="font-size: 14px">{{ r.name }}</span>
+                <span style="font-size: 14px; font-weight: 600; white-space: nowrap">{{ r.nFmt }} <span style="color: var(--color-neutral-600); font-weight: 400">· {{ r.pct }}</span></span>
+              </div>
+              <div style="height: 8px; background: var(--color-neutral-200)">
+                <div style="height: 100%; background: {{ r.color }}; width: {{ r.w }}"></div>
+              </div>
+            </div>
+          </sc-for>
+          <div style="font-size: 12px; color: var(--color-neutral-600); margin-top: 12px">{{ reasonsNote }}</div>
+        </div>
+      </div>
+
+      <div style="margin-top: 56px; border-top: 2px solid var(--color-divider); padding-top: 24px">
+        <div style="display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: baseline; margin-bottom: 8px">
+          <div style="font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-neutral-600)">На якому етапі стоять ліди</div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-left: auto">
+            <div style="display: flex; gap: 4px; flex-wrap: wrap">
+              <sc-for list="{{ donut.scopes }}" as="d" hint-placeholder-count="7">
+                <button type="button" class="{{ d.cls }}" onClick="{{ d.pick }}" style="font-size: 12px; padding: 4px 9px; font-weight: 500">{{ d.label }}</button>
+              </sc-for>
+            </div>
+            <select class="input" value="{{ donut.countryValue }}" onChange="{{ donut.onCountry }}" style="font-size: 12px; min-height: 28px; width: auto; min-width: 130px">
+              <sc-for list="{{ donut.countryOpts }}" as="o" hint-placeholder-count="15">
+                <option value="{{ o.value }}">{{ o.label }}</option>
+              </sc-for>
+            </select>
+          </div>
+        </div>
+        <div style="font-size: 12px; color: var(--color-neutral-600); margin-bottom: 20px">Власний зріз, незалежний від фільтра країн угорі · {{ donut.names }}</div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 40px; align-items: center">
+          <div style="position: relative; max-width: 260px; justify-self: center; width: 100%">
+            <svg viewBox="0 0 200 200" style="width: 100%; height: auto; display: block">
+              <circle cx="100" cy="100" r="70" fill="none" stroke="var(--color-neutral-200)" stroke-width="34"></circle>
+              <sc-for list="{{ donut.arcs }}" as="a" hint-placeholder-count="4">
+                <circle cx="100" cy="100" r="70" fill="none" stroke="{{ a.col }}" stroke-width="34"
+                        stroke-dasharray="{{ a.len }}" stroke-dashoffset="{{ a.off }}"
+                        transform="rotate(-90 100 100)"></circle>
+              </sc-for>
+              <circle cx="100" cy="100" r="53" fill="var(--color-bg)"></circle>
+            </svg>
+            <div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none">
+              <div style="font-family: var(--font-heading); font-weight: 800; font-size: 34px; line-height: 1; letter-spacing: -0.02em">{{ donut.total }}</div>
+              <div style="font-size: 12px; color: var(--color-neutral-700); margin-top: 4px">лідів у зрізі</div>
+            </div>
+          </div>
+
+          <div>
+            <sc-for list="{{ donut.rows }}" as="r" hint-placeholder-count="4">
+              <div style="padding: 10px 0; border-bottom: 1px solid var(--color-divider)">
+                <div style="display: flex; align-items: baseline; gap: 10px">
+                  <span style="width: 12px; height: 12px; flex: none; background: {{ r.col }}; transform: translateY(1px)"></span>
+                  <span style="font-size: 14px; font-weight: 600">{{ r.name }}</span>
+                  <span style="margin-left: auto; font-size: 14px; font-weight: 600; white-space: nowrap">{{ r.n }} <span style="color: var(--color-neutral-600); font-weight: 400">· {{ r.pct }}</span></span>
+                </div>
+                <div style="font-size: 12px; color: var(--color-neutral-600); padding-left: 22px; margin-top: 2px">{{ r.note }}</div>
+              </div>
+            </sc-for>
+            <div style="font-size: 14px; line-height: 1.5; margin-top: 16px; text-wrap: pretty">{{ donut.note }}</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section data-screen-label="03 Країни" style="padding: 48px 0; border-top: 2px solid var(--color-divider)">
+      <div style="font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-neutral-600); margin-bottom: 10px">03 · Країни{{ perNote }}</div>
+      <h2 style="font-size: clamp(28px, 3.4vw, 40px); margin: 0 0 12px">Які країни платять?</h2>
+      <div style="font-size: 17px; font-weight: 500; margin-bottom: 36px">{{ concentration }}</div>
+
+      <sc-if value="{{ single.on }}" hint-placeholder-val="{{ false }}">
+        <div style="border-top: 2px solid var(--color-text); border-bottom: 2px solid var(--color-divider); padding: 24px 0 28px; margin-bottom: 36px">
+          <div style="font-family: var(--font-heading); font-weight: 800; font-size: 32px; margin-bottom: 4px">{{ single.name }}</div>
+          <div style="font-size: 13px; color: var(--color-neutral-700); margin-bottom: 24px">менеджер: {{ single.manager }} · на тлі середнього по всіх 14 країнах</div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 28px">
+            <sc-for list="{{ single.cards }}" as="s" hint-placeholder-count="5">
+              <div>
+                <div style="font-family: var(--font-heading); font-weight: 800; font-size: 28px; letter-spacing: -0.02em; color: {{ s.color }}">{{ s.value }}</div>
+                <div style="font-size: 13px; color: var(--color-neutral-700); margin-top: 6px">{{ s.label }}</div>
+                <div style="font-size: 12px; color: var(--color-neutral-600); margin-top: 2px">середнє: {{ s.avg }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showRank }}" hint-placeholder-val="{{ true }}">
+        <div style="overflow-x: auto">
+          <table class="table" style="min-width: 880px">
+            <thead>
+              <tr>
+                <sc-for list="{{ cols }}" as="col" hint-placeholder-count="8">
+                  <th onClick="{{ col.sort }}" style="cursor: pointer; text-align: {{ col.align }}; white-space: nowrap; user-select: none">{{ col.label }}{{ col.arrow }}</th>
+                </sc-for>
+              </tr>
+            </thead>
+            <tbody>
+              <sc-for list="{{ rows }}" as="r" hint-placeholder-count="14">
+                <tr>
+                  <td style="font-weight: 600; white-space: nowrap">{{ r.c }}</td>
+                  <td style="color: var(--color-neutral-700); white-space: nowrap">{{ r.m }}</td>
+                  <td style="text-align: right">{{ r.leads }}</td>
+                  <td style="text-align: right; color: var(--color-neutral-700)">{{ r.targ }}</td>
+                  <td style="text-align: right; font-weight: 600; color: {{ r.payColor }}">{{ r.pays }}</td>
+                  <td style="text-align: right; color: var(--color-neutral-700)">{{ r.cr }}</td>
+                  <td style="text-align: right; font-weight: 600; white-space: nowrap">{{ r.sum }}</td>
+                  <td style="text-align: right; color: var(--color-neutral-700); white-space: nowrap">{{ r.sum7 }}</td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ redZone.has }}" hint-placeholder-val="{{ true }}">
+        <div style="margin-top: 32px; background: var(--color-accent-100); border-top: 3px solid var(--color-accent); padding: 22px 24px">
+          <div style="display: flex; flex-wrap: wrap; gap: 24px 40px; align-items: baseline">
+            <div>
+              <div style="font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-accent-800); margin-bottom: 6px">Червона зона</div>
+              <div style="font-family: var(--font-heading); font-weight: 800; font-size: 30px; color: var(--color-accent-800); line-height: 1">{{ redZone.leadsFmt }}</div>
+              <div style="font-size: 13px; color: var(--color-accent-800); margin-top: 6px">лідів не принесли жодного євро</div>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px 10px; flex: 1; min-width: 260px">
+              <sc-for list="{{ redZone.items }}" as="z" hint-placeholder-count="5">
+                <span style="font-size: 13px; font-weight: 600; color: var(--color-accent-800); border: 1px solid var(--color-accent-300); padding: 4px 10px; white-space: nowrap">{{ z.name }} · {{ z.leads }}</span>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+    </section>
+
+    <section data-screen-label="04 Менеджери" style="padding: 48px 0; border-top: 2px solid var(--color-divider)">
+      <div style="font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-neutral-600); margin-bottom: 10px">04 · Менеджери{{ perNote }}</div>
+      <h2 style="font-size: clamp(28px, 3.4vw, 40px); margin: 0 0 12px">Хто продає?</h2>
+      <div style="font-size: 17px; font-weight: 500; margin-bottom: 36px; max-width: 760px; text-wrap: pretty">{{ managersNote }}</div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1px; background: var(--color-divider); border-top: 2px solid var(--color-divider); border-bottom: 2px solid var(--color-divider)">
+        <sc-for list="{{ managers }}" as="g" hint-placeholder-count="4">
+          <div style="background: var(--color-bg); padding: 22px 22px 24px; display: flex; flex-direction: column; gap: 20px">
+            <div>
+              <div style="font-family: var(--font-heading); font-weight: 800; font-size: 19px">{{ g.name }}</div>
+              <div style="font-size: 12px; color: var(--color-neutral-600); margin-top: 4px">{{ g.countries }}</div>
+            </div>
+            <div>
+              <div style="font-family: var(--font-heading); font-weight: 800; font-size: 30px; line-height: 1; letter-spacing: -0.02em">{{ g.sumFmt }}</div>
+              <div style="font-size: 12px; color: var(--color-neutral-700); margin-top: 6px">всього зароблено</div>
+              <div style="font-size: 13px; font-weight: 600; margin-top: 8px; color: {{ g.perColor }}">{{ g.perFmt }}</div>
+            </div>
+            <div style="font-size: 12px; color: var(--color-neutral-600); border-top: 1px solid var(--color-divider); padding-top: 10px">{{ g.meta }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="margin-top: 48px">
+        <div style="font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-neutral-600); margin-bottom: 14px">Менеджер · країна · гроші</div>
+        <div style="overflow-x: auto">
+          <table class="table" style="min-width: 640px">
+            <thead>
+              <tr>
+                <th>Менеджер</th>
+                <th>Країна</th>
+                <th style="text-align: right">Сума замовл.</th>
+                <th style="text-align: right">К-сть замовл.</th>
+                <th style="text-align: right; white-space: nowrap">Сер. чек</th>
+              </tr>
+            </thead>
+            <tbody>
+              <sc-for list="{{ mgTable }}" as="m" hint-placeholder-count="18">
+                <tr>
+                  <td style="font-weight: 600; white-space: nowrap; border-top: {{ m.bt }}; background: {{ m.bg }}">{{ m.mgr }}</td>
+                  <td style="white-space: nowrap; border-top: {{ m.bt }}; background: {{ m.bg }}; font-weight: {{ m.weight }}; color: {{ m.col }}">{{ m.c }}</td>
+                  <td style="text-align: right; border-top: {{ m.bt }}; background: {{ m.bg }}; font-weight: {{ m.weight }}; color: {{ m.col }}; white-space: nowrap">{{ m.sum }}</td>
+                  <td style="text-align: right; border-top: {{ m.bt }}; background: {{ m.bg }}; font-weight: {{ m.weight }}; color: {{ m.col }}">{{ m.pays }}</td>
+                  <td style="text-align: right; border-top: {{ m.bt }}; background: {{ m.bg }}; font-weight: {{ m.weight }}; color: {{ m.col }}; white-space: nowrap">{{ m.chk }}</td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+        <div style="font-size: 12px; color: var(--color-neutral-600); margin-top: 10px; text-wrap: pretty">{{ mgTableNote }}</div>
+      </div>
+
+      <div style="margin-top: 48px; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 36px">
+        <sc-for list="{{ ranks }}" as="rk" hint-placeholder-count="3">
+          <div>
+            <div style="font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-neutral-600); border-top: 2px solid var(--color-text); padding-top: 12px; margin-bottom: 8px">{{ rk.title }}</div>
+            <sc-for list="{{ rk.rows }}" as="r" hint-placeholder-count="14">
+              <div style="display: flex; align-items: baseline; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--color-divider); color: {{ r.dim }}">
+                <span style="width: 22px; flex: none; font-size: 12px; color: var(--color-neutral-600)">{{ r.n }}</span>
+                <span style="font-size: 14px">{{ r.c }}</span>
+                <span style="margin-left: auto; font-size: 14px; font-weight: 600; white-space: nowrap">{{ r.v }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <section data-screen-label="05 Маркетинг" style="padding: 48px 0; border-top: 2px solid var(--color-divider)">
+      <div style="font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-neutral-600); margin-bottom: 10px">05 · Маркетинг{{ perNote }}</div>
+      <h2 style="font-size: clamp(28px, 3.4vw, 40px); margin: 0 0 12px">Хто купує і звідки приходить?</h2>
+      <div style="font-size: 17px; font-weight: 500; margin-bottom: 36px; max-width: 820px; text-wrap: pretty">{{ marketingNote }}</div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 48px">
+        <div>
+          <div style="font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-neutral-600); margin-bottom: 12px">Звідки прийшли</div>
+          <div style="overflow-x: auto">
+            <table class="table" style="min-width: 420px">
+              <thead>
+                <tr>
+                  <th>Джерело</th>
+                  <th style="text-align: right">Ліди</th>
+                  <th style="text-align: right">Оплати</th>
+                  <th style="text-align: right; white-space: nowrap">Платить (з усіх лідів)</th>
+                  <th style="text-align: right">Сума</th>
+                </tr>
+              </thead>
+              <tbody>
+                <sc-for list="{{ srcRows }}" as="s" hint-placeholder-count="3">
+                  <tr>
+                    <td style="font-weight: 600; white-space: nowrap">{{ s.name }}</td>
+                    <td style="text-align: right">{{ s.leads }}</td>
+                    <td style="text-align: right; font-weight: 600; color: {{ s.payColor }}">{{ s.pays }}</td>
+                    <td style="text-align: right; color: var(--color-neutral-700); white-space: nowrap">{{ s.cr }}</td>
+                    <td style="text-align: right; font-weight: 600; white-space: nowrap">{{ s.sum }}</td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div>
+          <div style="font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-neutral-600); margin-bottom: 12px">Хто саме купує</div>
+          <div style="overflow-x: auto">
+            <table class="table" style="min-width: 460px">
+              <thead>
+                <tr>
+                  <th>Тип бізнесу</th>
+                  <th style="text-align: right">Ліди</th>
+                  <th style="text-align: right">Оплати</th>
+                  <th style="text-align: right; white-space: nowrap">Сер. чек</th>
+                  <th style="text-align: right">Сума</th>
+                </tr>
+              </thead>
+              <tbody>
+                <sc-for list="{{ typeRows }}" as="t" hint-placeholder-count="10">
+                  <tr>
+                    <td style="font-weight: 600; white-space: nowrap">{{ t.name }}</td>
+                    <td style="text-align: right">{{ t.leads }}</td>
+                    <td style="text-align: right">{{ t.pays }}</td>
+                    <td style="text-align: right; font-weight: 600; white-space: nowrap; color: {{ t.chkColor }}">{{ t.chk }}</td>
+                    <td style="text-align: right; white-space: nowrap">{{ t.sum }}</td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+          <div style="font-size: 13px; margin-top: 14px; color: var(--color-accent-800); font-weight: 600">{{ anomalyNote }}</div>
+        </div>
+      </div>
+
+      <div style="font-size: 12px; color: var(--color-neutral-600); margin-top: 28px; border-top: 1px solid var(--color-divider); padding-top: 10px">{{ quality }}</div>
+    </section>
+
+    <section data-screen-label="06 Дисципліна" style="padding: 48px 0 0; border-top: 2px solid var(--color-divider)">
+      <div style="font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-neutral-600); margin-bottom: 10px">06 · Дисципліна{{ perNote }}</div>
+      <h2 style="font-size: clamp(28px, 3.4vw, 40px); margin: 0 0 36px">Чи встигаємо відповідати?</h2>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 48px; align-items: start">
+        <div>
+          <div style="display: flex; gap: 48px; flex-wrap: wrap">
+            <div>
+              <div style="font-family: var(--font-heading); font-weight: 800; font-size: clamp(40px, 5vw, 60px); line-height: 1; letter-spacing: -0.03em">{{ disc.need }}</div>
+              <div style="font-size: 14px; color: var(--color-neutral-700); margin-top: 8px">лідів чекають на дію</div>
+            </div>
+            <div>
+              <div style="font-family: var(--font-heading); font-weight: 800; font-size: clamp(40px, 5vw, 60px); line-height: 1; letter-spacing: -0.03em; color: var(--color-accent)">{{ disc.red }}</div>
+              <div style="font-size: 14px; color: var(--color-accent-800); margin-top: 8px; font-weight: 600">з них горять: мовчать 14+ днів</div>
+            </div>
+          </div>
+          <div style="font-size: 17px; font-weight: 500; margin-top: 28px; max-width: 460px; text-wrap: pretty">{{ disc.note }}</div>
+        </div>
+
+        <div>
+          <div style="font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-neutral-600); margin-bottom: 4px; border-top: 2px solid var(--color-text); padding-top: 14px">Скільки днів до першого листа</div>
+          <div style="font-size: 12px; color: var(--color-neutral-600); margin-bottom: 14px">від найповільніших до найшвидших</div>
+          <sc-for list="{{ disc.respRows }}" as="d" hint-placeholder-count="7">
+            <div style="display: flex; align-items: center; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--color-divider)">
+              <span style="width: 108px; flex: none; font-size: 13px">{{ d.name }}</span>
+              <span style="flex: 1; height: 8px; background: var(--color-neutral-200)">
+                <span style="display: block; height: 100%; background: {{ d.color }}; width: {{ d.w }}"></span>
+              </span>
+              <span style="width: 74px; flex: none; text-align: right; font-size: 13px; font-weight: 600; color: {{ d.color }}">{{ d.days }}</span>
+            </div>
+          </sc-for>
+          <div style="font-size: 12px; color: var(--color-neutral-600); margin-top: 12px; text-wrap: pretty">{{ disc.respNote }}</div>
+        </div>
+      </div>
+
+      <div style="margin-top: 40px; border-top: 1px solid var(--color-divider); padding-top: 12px; font-size: 12px; color: var(--color-neutral-600)">{{ disc.tail }}</div>
+    </section>
+  </div>
+</div>
