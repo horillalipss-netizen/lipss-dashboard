@@ -265,7 +265,10 @@ class Component extends DCLogic {
       : (raw[weakI].name === 'Діалог' ? 'Найбільше губимо на першому листі.'
         : 'Найбільше губимо на переході до етапу «' + raw[weakI].name.toLowerCase() + '».');
     const funnelNote2 = weakI > 0
-      ? 'З ' + this.fmt(raw[1].n) + ' цільових лідів у діалог заходить ' + this.fmt(raw[2].n) + ' — не відповідає ' + noAnswer + ' із 10. Зате з тих, хто заговорив, платить ' + paidOfDial + ' із 10: розмова вартує дорожче за нового ліда. CR запит→оплата = ' + this.pc(raw[0].n ? raw[3].n / raw[0].n * 100 : 0, 2) + '.'
+      ? 'З ' + this.fmt(raw[1].n) + ' ' + this.plural(raw[1].n, 'цільового ліда', 'цільових лідів', 'цільових лідів')
+        + ' у діалог заходить ' + this.fmt(raw[2].n) + ' — не відповідає ' + noAnswer + ' із 10.'
+        + (paidOfDial > 0 ? ' Зате з тих, хто заговорив, платить ' + paidOfDial + ' із 10: розмова вартує дорожче за нового ліда.' : '')
+        + ' CR запит→оплата = ' + this.pc(raw[0].n ? raw[3].n / raw[0].n * 100 : 0, 2) + '.'
       : 'Спробуйте розширити зріз: зняти фільтр країни або взяти весь час.';
 
     const rsum = agg.rz.reduce((a, v) => a + v, 0);
@@ -277,7 +280,8 @@ class Component extends DCLogic {
       color: i === 0 ? 'var(--color-accent)' : (i === 5 ? 'var(--color-neutral-500)' : 'var(--color-text)')
     }));
     const known = agg.rz[2] + agg.rz[3] + agg.rz[4];
-    const reasonsNote = 'Явну причину зупинки менеджер записав лише у ' + this.fmt(known) + ' з ' + this.fmt(rsum) + ' лідів без оплати. Решта — тиша у відповідь.';
+    const reasonsNote = !rsum ? '' : 'Явну причину зупинки менеджер записав лише у ' + this.fmt(known)
+      + ' з ' + this.fmt(rsum) + ' ' + this.plural(rsum, 'ліда', 'лідів', 'лідів') + ' без оплати. Решта — тиша у відповідь.';
 
     // ── антирейтинг: поки є країни з нульовими оплатами — показуємо їх;
     //    коли платити почнуть усі, лишається трійка найслабших знизу списку. ──
@@ -493,11 +497,11 @@ class Component extends DCLogic {
     const byLeads = C.typ.slice().sort((a, b) => b.leads - a.leads)[0];
     const byPays = C.typ.slice().sort((a, b) => b.pays - a.pays)[0];
     const marketingNote = !byLeads || !agg.leads ? ''
-      : '«' + byLeads.name + '» — ' + this.pc(byLeads.leads / agg.leads * 100, 0) + ' усіх лідів'
+      : ('«' + byLeads.name + '» — ' + this.pc(byLeads.leads / agg.leads * 100, 0) + ' усіх лідів'
         + (byPays && byPays.pays && byPays.name === byLeads.name ? ' і більшість оплат' : '') + '. '
-        + (rich && rich.name !== byLeads.name ? 'Але найбільший чек приходить не звідти, а з дрібних сегментів, де лідів одиниці.' : '');
+        + (rich && rich.name !== byLeads.name ? 'Але найбільший чек приходить не звідти, а з дрібних сегментів, де лідів одиниці.' : '')).trim();
     const anomalyNote = rich
-      ? 'Аномалія: «' + rich.name + '» — ' + this.fmt(rich.leads) + ' ' + this.plural(rich.leads, 'лід', 'ліди', 'лідів') + ' і ' + this.fmt(rich.pays) + ' ' + this.plural(rich.pays, 'оплата', 'оплати', 'оплат') + ', але чек ' + this.eur(rich.first / rich.pays) + ' — у ' + this.dec(rich.first / rich.pays / avgChkAll, 1) + ' раза вищий за середній. Таких лідів мало, варто пошукати ще.'
+      ? 'Аномалія: «' + rich.name + '» — ' + this.fmt(rich.leads) + ' ' + this.plural(rich.leads, 'лід', 'ліди', 'лідів') + ' і ' + this.fmt(rich.pays) + ' ' + this.plural(rich.pays, 'оплата', 'оплати', 'оплат') + ', але чек ' + this.eur(rich.first / rich.pays) + ' — у ' + (function (k) { const r = Math.round(k); return Math.abs(k - r) < 0.05 ? r + ' ' + (r % 10 === 1 && r % 100 !== 11 ? 'раз' : 'рази') : k.toFixed(1).replace('.', ',') + ' раза'; })(rich.first / rich.pays / avgChkAll) + ' вищий за середній. Таких лідів мало, варто пошукати ще.'
       : 'У цьому зрізі помітних аномалій по чеку немає.';
     const quality = 'Якість даних: без джерела — 0 · без типу бізнесу — ' + this.fmt(noType) + (agg.leads ? ' (' + this.pc(noType / agg.leads * 100, 0) + ' лідів зрізу)' : '') + ' — у розрізі «хто саме купує» вони йдуть окремим рядком, а не зникають.';
 
@@ -532,7 +536,7 @@ class Component extends DCLogic {
         : 'У цьому зрізі лідів немає.',
       respRows: respRows,
       respNote: noResp.length
-        ? 'Дат першого листа немає у ' + noResp.length + ' ' + this.plural(noResp.length, 'країни', 'країнах', 'країнах') + ' (' + noResp.join(', ') + ') — колонка J там не заповнювалась, тож у рейтинг вони не входять.'
+        ? 'Дат першого листа немає у ' + noResp.length + ' ' + this.plural(noResp.length, 'країні', 'країнах', 'країнах') + ' (' + noResp.join(', ') + ') — колонка J там не заповнювалась, тож у рейтинг вони не входять.'
         : 'Дати першого листа заповнені по всіх країнах зрізу.',
       tail: tailText, hasTail: !!tailText
     };
