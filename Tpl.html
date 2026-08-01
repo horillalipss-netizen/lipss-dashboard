@@ -85,7 +85,7 @@
         </div>
         <sc-if value="{{ hasDaily }}" hint-placeholder-val="{{ false }}">
           <div style="flex: 1 1 340px; min-width: 300px; align-self: stretch; background: var(--color-accent-100); border-left: 3px solid var(--color-accent); padding: 18px 22px">
-            <div style="font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-accent-800); margin-bottom: 8px">Висновок дня · {{ dailyDate }}</div>
+            <div style="font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-accent-800); margin-bottom: 8px">Висновок дня{{ dailySlice }} · {{ dailyDate }}</div>
             <div style="font-size: 15px; line-height: 1.55; font-weight: 500; text-wrap: pretty">{{ dailyText }}</div>
           </div>
         </sc-if>

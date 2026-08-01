@@ -569,6 +569,25 @@ class Component extends DCLogic {
         pick: () => this.setState({ sel: p.list.slice() })
       };
     });
+    // ── висновок дня: підбираємо текст під активний фільтр ──
+    const DD = this.CFG.daily || null;
+    const dTexts = DD ? (DD.texts || (DD.text ? { all: DD.text } : null)) : null;
+    let dKey = null, dSlice = '';
+    if (dTexts) {
+      const nd = (this.state.sel.length ? 1 : 0) + (this.state.source !== 'all' ? 1 : 0) + (this.state.type !== 'all' ? 1 : 0);
+      if (nd === 0) dKey = 'all';
+      else if (nd === 1) {
+        if (this.state.sel.length === 1) { dKey = 'c:' + this.state.sel[0]; dSlice = this.state.sel[0]; }
+        else if (this.state.sel.length > 1) {
+          if (same(byMoney.slice(0, 3).map(r => r.c))) { dKey = 'p:top3'; dSlice = 'ТОП-3'; }
+          else if (same(best)) { dKey = 'p:paid'; dSlice = 'де є оплати'; }
+          else if (same(anti.list.map(r => r.c))) { dKey = 'p:anti'; dSlice = anti.label; }
+        } else if (this.state.source !== 'all') { dKey = 's:' + this.state.source; dSlice = this.state.source; }
+        else { dKey = 't:' + this.state.type; dSlice = this.state.type; }
+      }
+    }
+    const dText = (dKey && dTexts && dTexts[dKey]) ? dTexts[dKey] : '';
+
     const periodOpts = [{ v: '7', l: '7 днів' }, { v: '30', l: '30 днів' }, { v: 'all', l: 'весь час' }].map(p => ({
       label: p.l,
       style: 'font-family: var(--font-body); border: 0; cursor: pointer; ' + (period === p.v
@@ -585,9 +604,10 @@ class Component extends DCLogic {
 
     return {
       stamp: this.props.stamp || this.CFG.stamp,
-      hasDaily: !!(this.CFG.daily && this.CFG.daily.text),
-      dailyDate: this.CFG.daily ? this.CFG.daily.date : '',
-      dailyText: this.CFG.daily ? this.CFG.daily.text : '',
+      hasDaily: !!dText,
+      dailyDate: DD ? DD.date : '',
+      dailySlice: dSlice ? ' · ' + dSlice : '',
+      dailyText: dText,
       buildNote: this.BUILD ? ' · збірка ' + this.BUILD : '',
       countryOpts: countryOpts, presetOpts: presetOpts, periodOpts: periodOpts,
       sourceOpts: [{ value: 'all', label: 'усі джерела' }].concat(this.SRC.map(s => ({ value: s, label: s }))),
