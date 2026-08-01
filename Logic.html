@@ -585,6 +585,9 @@ class Component extends DCLogic {
 
     return {
       stamp: this.props.stamp || this.CFG.stamp,
+      hasDaily: !!(this.CFG.daily && this.CFG.daily.text),
+      dailyDate: this.CFG.daily ? this.CFG.daily.date : '',
+      dailyText: this.CFG.daily ? this.CFG.daily.text : '',
       buildNote: this.BUILD ? ' · збірка ' + this.BUILD : '',
       countryOpts: countryOpts, presetOpts: presetOpts, periodOpts: periodOpts,
       sourceOpts: [{ value: 'all', label: 'усі джерела' }].concat(this.SRC.map(s => ({ value: s, label: s }))),

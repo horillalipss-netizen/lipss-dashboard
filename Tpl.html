@@ -70,7 +70,7 @@
 
     <section data-screen-label="01 Гроші" style="padding: 56px 0 48px">
       <div style="font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-neutral-600); margin-bottom: 10px">01 · Гроші</div>
-      <h2 style="font-size: clamp(28px, 3.4vw, 40px); margin: 0 0 40px">Скільки заробляємо?</h2>
+      <h2 style="font-size: clamp(28px, 3.4vw, 40px); margin: 0 0 40px">Скільки заробили всього?</h2>
 
       <div style="display: flex; flex-wrap: wrap; gap: 56px 72px; align-items: flex-end; margin-bottom: 48px">
         <div>
@@ -83,6 +83,12 @@
           <div style="font-size: 18px; font-weight: 600; margin-top: 10px; color: {{ m.deltaColor }}">{{ m.deltaText }}</div>
           <div style="font-size: 12px; color: var(--color-neutral-600); margin-top: 2px">у порівнянні з попереднім тижнем</div>
         </div>
+        <sc-if value="{{ hasDaily }}" hint-placeholder-val="{{ false }}">
+          <div style="flex: 1 1 340px; min-width: 300px; align-self: stretch; background: var(--color-accent-100); border-left: 3px solid var(--color-accent); padding: 18px 22px">
+            <div style="font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-accent-800); margin-bottom: 8px">Висновок дня · {{ dailyDate }}</div>
+            <div style="font-size: 15px; line-height: 1.55; font-weight: 500; text-wrap: pretty">{{ dailyText }}</div>
+          </div>
+        </sc-if>
       </div>
 
       <div style="display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 40px; align-items: start">
