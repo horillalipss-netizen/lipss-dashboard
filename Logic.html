@@ -234,7 +234,7 @@ class Component extends DCLogic {
     const advice = {
       'Цільовий': 'багато нерелевантних заявок — перевірте налаштування реклами',
       'Діалог': 'ліди не відповідають на перший лист',
-      'Оплата': 'до оплати доходить менше ніж кожен пʼятий діалог'
+      'Оплата': 'діалоги не доводимо до оплати'
     };
     const raw = [
       { name: 'Запит', n: agg.leads, human: 'усі заявки, що прийшли' },
@@ -261,7 +261,9 @@ class Component extends DCLogic {
     });
     const noAnswer = raw[1].n ? Math.min(Math.round(10 - raw[2].n / raw[1].n * 10), raw[2].n > 0 ? 9 : 10) : 0;
     const paidOfDial = raw[2].n ? Math.round(raw[3].n / raw[2].n * 10) : 0;
-    const funnelNote = weakI > 0 ? 'Найбільше губимо на першому листі.' : 'Замало даних, щоб назвати найслабший етап.';
+    const funnelNote = weakI <= 0 ? 'Замало даних, щоб назвати найслабший етап.'
+      : (raw[weakI].name === 'Діалог' ? 'Найбільше губимо на першому листі.'
+        : 'Найбільше губимо на переході до етапу «' + raw[weakI].name.toLowerCase() + '».');
     const funnelNote2 = weakI > 0
       ? 'З ' + this.fmt(raw[1].n) + ' цільових лідів у діалог заходить ' + this.fmt(raw[2].n) + ' — не відповідає ' + noAnswer + ' із 10. Зате з тих, хто заговорив, платить ' + paidOfDial + ' із 10: розмова вартує дорожче за нового ліда. CR запит→оплата = ' + this.pc(raw[0].n ? raw[3].n / raw[0].n * 100 : 0, 2) + '.'
       : 'Спробуйте розширити зріз: зняти фільтр країни або взяти весь час.';
@@ -307,6 +309,7 @@ class Component extends DCLogic {
       n: this.fmt(v), pct: this.pc(dTotal ? v / dTotal * 100 : 0, 1),
       w: (dTotal ? v / dTotal * 100 : 0).toFixed(2) + '%'
     }));
+    const dTop = dStg.indexOf(Math.max.apply(null, dStg));
     const donutScopes = [{ v: 'all', l: 'усі 14' }].concat(this.MG.map(m => ({ v: m, l: m })))
       .concat([{ v: 'top3', l: 'ТОП-3' }, { v: 'anti', l: anti.label }]).map(o => ({
         label: o.l,
@@ -320,9 +323,9 @@ class Component extends DCLogic {
       countryValue: dIsCountry ? dScope : 'all',
       countryOpts: [{ value: 'all', label: 'усі країни' }].concat(this.ORDER.map(c => ({ value: c, label: c }))),
       onCountry: e => this.setState({ donut: e.target.value }),
-      note: dTotal
-        ? this.pc(dTotal ? dStg[1] / dTotal * 100 : 0, 0) + ' бази стоїть на «Цільовому» — це ліди, які підходять нам, але не відповіли. Саме вони, а не нові заявки, — найдешевший резерв виручки.'
-        : 'У цьому зрізі лідів немає.'
+      note: !dTotal ? 'У цьому зрізі лідів немає.'
+        : this.pc(dStg[dTop] / dTotal * 100, 0) + ' бази стоїть на етапі «' + this.STAGES[dTop].n + '»'
+          + (dTop === 1 ? ' — це ліди, які підходять нам, але не відповіли. Саме вони, а не нові заявки, — найдешевший резерв виручки.' : '.')
     };
 
     // ── менеджери × країни (сума M+O, к-сть = етап 5, чек = перші/к-сть — формули таблиці) ──
@@ -455,7 +458,13 @@ class Component extends DCLogic {
     });
     const topM = gArr[0], bestNorm = gArr.slice().sort((a, b) => (b.leads ? b.sum / b.leads : 0) - (a.leads ? a.sum / a.leads : 0))[0];
     const managersNote = managers.length > 1
-      ? 'Території нерівні: у Катерини шість країн, у Саші О. — дві. ' + (topM && bestNorm && topM.name !== bestNorm.name
+      ? (function (self) {
+        const sz = gArr.map(g => ({ n: g.name, k: g.cs.length })).sort((a, b) => b.k - a.k);
+        const big = sz[0], small = sz[sz.length - 1];
+        return big.k === small.k ? 'Території рівні за кількістю країн. '
+          : 'Території нерівні: ' + big.n + ' — ' + big.k + ' ' + self.plural(big.k, 'країна', 'країни', 'країн')
+            + ', ' + small.n + ' — ' + small.k + '. ';
+      })(this) + (topM && bestNorm && topM.name !== bestNorm.name
         ? 'За абсолютною сумою попереду ' + topM.name + ', але на 100 лідів найкраще конвертує ' + bestNorm.name + ' — ' + this.eur(bestNorm.leads ? bestNorm.sum / bestNorm.leads * 100 : 0) + '.'
         : 'Тому візьміть до уваги суму разом із рядком «на 100 лідів» — він нормує розмір території.')
       : 'Один менеджер у зрізі.';
@@ -480,8 +489,13 @@ class Component extends DCLogic {
     // Шукаємо за назвою, а не за позицією: порядок типів залежить від таблиці.
     const noTypeRow = C.typ.filter(t => t.name === 'Без типу')[0];
     const noType = noTypeRow ? noTypeRow.leads : 0;
-    const marketingNote = 'Дві третини лідів — салони краси, вони ж дають більшість оплат. Але найбільший чек приходить не звідти, а з дрібних сегментів, де лідів одиниці.';
     const rich = C.typ.filter(t => t.pays > 0 && avgChkAll && t.first / t.pays > avgChkAll * 2).sort((a, b) => b.first / b.pays - a.first / a.pays)[0];
+    const byLeads = C.typ.slice().sort((a, b) => b.leads - a.leads)[0];
+    const byPays = C.typ.slice().sort((a, b) => b.pays - a.pays)[0];
+    const marketingNote = !byLeads || !agg.leads ? ''
+      : '«' + byLeads.name + '» — ' + this.pc(byLeads.leads / agg.leads * 100, 0) + ' усіх лідів'
+        + (byPays && byPays.pays && byPays.name === byLeads.name ? ' і більшість оплат' : '') + '. '
+        + (rich && rich.name !== byLeads.name ? 'Але найбільший чек приходить не звідти, а з дрібних сегментів, де лідів одиниці.' : '');
     const anomalyNote = rich
       ? 'Аномалія: «' + rich.name + '» — ' + this.fmt(rich.leads) + ' ' + this.plural(rich.leads, 'лід', 'ліди', 'лідів') + ' і ' + this.fmt(rich.pays) + ' ' + this.plural(rich.pays, 'оплата', 'оплати', 'оплат') + ', але чек ' + this.eur(rich.first / rich.pays) + ' — у ' + this.dec(rich.first / rich.pays / avgChkAll, 1) + ' раза вищий за середній. Таких лідів мало, варто пошукати ще.'
       : 'У цьому зрізі помітних аномалій по чеку немає.';
@@ -506,7 +520,15 @@ class Component extends DCLogic {
     const disc = {
       need: this.fmt(agg.need), red: this.fmt(agg.red),
       note: agg.leads
-        ? 'Дії потребує ' + this.pc(agg.need / agg.leads * 100, 0) + ' бази, і більшість із них — прострочені. Країни, де перший лист іде понад 3 дні, не дали жодної оплати: це та ж червона зона.'
+        ? 'Дії потребує ' + this.pc(agg.need / agg.leads * 100, 0) + ' бази, і більшість із них — прострочені.'
+          + (function () {
+            const slow = C.base.filter(r => r.respN && r.resp / r.respN > 3);
+            if (!slow.length) return '';
+            const paying = slow.filter(r => r.sum > 0);
+            return !paying.length
+              ? ' Країни, де перший лист іде понад 3 дні, не дали жодної оплати: це та ж червона зона.'
+              : ' Там, де перший лист іде понад 3 дні, оплати ' + (paying.length === 1 ? 'має' : 'мають') + ' лише ' + paying.map(r => r.c).join(', ') + '.';
+          })()
         : 'У цьому зрізі лідів немає.',
       respRows: respRows,
       respNote: noResp.length
